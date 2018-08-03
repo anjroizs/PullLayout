@@ -20,7 +20,7 @@ public class MainActivity extends AppCompatActivity {
         pullLayout = findViewById(R.id.pullLayout);
         listView = findViewById(R.id.listView);
         ArrayList data = new ArrayList();
-        for (int i = 0; i < 20; i++) {
+        for (int i = 0; i < 25; i++) {
             data.add("Data" + i);
         }
         listView.setAdapter(new ArrayAdapter<String>(this, android.R.layout.simple_list_item_1, data));

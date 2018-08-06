@@ -21,6 +21,12 @@ import pull.js.com.pullwidget.R;
 public class PullLayout extends ViewGroup {
     public static final String tag = "PullLayout";
     /**
+     * 业务是否处理成功
+     */
+    public static final int SUCCESS = 1;
+    public static final int FAILED = 2;
+
+    /**
      * 头部组件
      */
     private View headView;
@@ -76,19 +82,27 @@ public class PullLayout extends ViewGroup {
     /**
      * 完成刷新
      */
-    private static final int STATUS_PULLED_DOWN = 5;
+    private static final int STATUS_PULLED_DOWN_SUCCESS = 5;
+    /**
+     * 完成刷新
+     */
+    private static final int STATUS_PULLED_DOWN_FAILED = 6;
     /**
      * 正在加载（底部全部显示）
      */
-    private static final int STATUS_PULLING_UP = 6;
+    private static final int STATUS_PULLING_UP = 7;
     /**
      * 完成加载
      */
-    private static final int STATUS_PULLED_UP = 7;
+    private static final int STATUS_PULLED_UP_SUCCESS = 8;
+    /**
+     * 完成加载
+     */
+    private static final int STATUS_PULLED_UP_FAILED = 9;
     /**
      * 业务操作完成
      */
-    private static final int STATUS_DONE = 8;
+    private static final int STATUS_DONE = 10;
     /**
      * 状态
      */
@@ -118,12 +132,27 @@ public class PullLayout extends ViewGroup {
     private void init(Context context) {
     }
 
-    private Runnable runnable = new Runnable() {
-        @Override
-        public void run() {
-
+    public final void finished(int result) {
+        int status = STATUS_INIT;
+        if (this.status == STATUS_PULLING_DOWN) {
+            if (result == SUCCESS) {
+                status = STATUS_PULLED_DOWN_SUCCESS;
+            } else if (result == FAILED) {
+                status = STATUS_PULLED_UP_FAILED;
+            }
+        } else if (this.status == STATUS_PULLING_UP) {
+            status = STATUS_PULLED_UP_SUCCESS;
+            if (result == SUCCESS) {
+                status = STATUS_PULLED_UP_SUCCESS;
+            } else if (result == FAILED) {
+                status = STATUS_PULLED_UP_FAILED;
+            }
         }
-    };
+        changeStatus(status);
+        restorePosition();
+
+    }
+
     private float preY;
     /**
      * 过滤多指操作
@@ -244,19 +273,32 @@ public class PullLayout extends ViewGroup {
                 case STATUS_PULLING_DOWN:
                     headTView.setText("正在刷新");
                     bottomTView.setText("");
+                    if (onPullListener != null) {
+                        onPullListener.onPullDown();
+                    }
                     this.status = status;
                     break;
                 case STATUS_PULLING_UP:
                     bottomTView.setText("正在加载");
                     headTView.setText("");
+                    if (onPullListener != null) {
+                        onPullListener.onPullUp();
+                    }
                     this.status = status;
                     break;
-                case STATUS_PULLED_DOWN:
-                    headTView.setText("刷新完成");
+                case STATUS_PULLED_DOWN_SUCCESS:
+                    headTView.setText("刷新完成成功");
                     this.status = status;
                     break;
-                case STATUS_PULLED_UP:
-                    bottomTView.setText("加载完成");
+                case STATUS_PULLED_DOWN_FAILED:
+                    headTView.setText("刷新完成失败");
+                    this.status = status;
+                    break;
+                case STATUS_PULLED_UP_SUCCESS:
+                    bottomTView.setText("加载完成成功");
+                    this.status = status;
+                case STATUS_PULLED_UP_FAILED:
+                    bottomTView.setText("加载完成失败");
                     this.status = status;
                     break;
             }
@@ -341,6 +383,10 @@ public class PullLayout extends ViewGroup {
                 break;
                 case STATUS_INIT:
                 case STATUS_DONE:
+                case STATUS_PULLED_DOWN_SUCCESS:
+                case STATUS_PULLED_UP_SUCCESS:
+                case STATUS_PULLED_DOWN_FAILED:
+                case STATUS_PULLED_UP_FAILED:
                     if (pullDistance < 0) {
                         pullDistance += MOVE_SPEED;
                         if (pullDistance > 0) {
@@ -359,10 +405,6 @@ public class PullLayout extends ViewGroup {
                         }
                     }
                     requestLayout();
-
-                    break;
-                case STATUS_PULLED_DOWN:
-                case STATUS_PULLED_UP:
                     break;
             }
         }
@@ -433,5 +475,17 @@ public class PullLayout extends ViewGroup {
     public final void enable(boolean enableHead, boolean enableFoot) {
         this.enableHead = enableHead;
         this.enableFoot = enableFoot;
+    }
+
+    private OnPullListener onPullListener;
+
+    public void setOnPullListener(OnPullListener onPullListener) {
+        this.onPullListener = onPullListener;
+    }
+
+    public interface OnPullListener {
+        void onPullDown();
+
+        void onPullUp();
     }
 }

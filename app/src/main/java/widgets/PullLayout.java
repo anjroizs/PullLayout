@@ -88,21 +88,25 @@ public class PullLayout extends ViewGroup {
      */
     private static final int STATUS_PULLED_DOWN_FAILED = 6;
     /**
+     * 松开即可加载
+     */
+    private static final int STATUS_RELEASE_PULLING_UP = 7;
+    /**
      * 正在加载（底部全部显示）
      */
-    private static final int STATUS_PULLING_UP = 7;
+    private static final int STATUS_PULLING_UP = 8;
     /**
      * 完成加载
      */
-    private static final int STATUS_PULLED_UP_SUCCESS = 8;
+    private static final int STATUS_PULLED_UP_SUCCESS = 9;
     /**
      * 完成加载
      */
-    private static final int STATUS_PULLED_UP_FAILED = 9;
+    private static final int STATUS_PULLED_UP_FAILED = 10;
     /**
      * 业务操作完成
      */
-    private static final int STATUS_DONE = 10;
+    private static final int STATUS_DONE = 11;
     /**
      * 状态
      */
@@ -158,12 +162,14 @@ public class PullLayout extends ViewGroup {
      * 过滤多指操作
      */
     private boolean singlePoint = true;
+    private boolean isDispatched = false;
 
     @Override
     public boolean dispatchTouchEvent(MotionEvent ev) {
-        super.dispatchTouchEvent(ev);
         final float x = ev.getX();
         final float y = ev.getY();
+        Log.e(tag, "dispatchTouchEvent y=" + y);
+        isDispatched = false;
         switch (ev.getAction()) {
             case MotionEvent.ACTION_DOWN:
                 preY = y;
@@ -171,48 +177,69 @@ public class PullLayout extends ViewGroup {
                 resetEvent();
                 break;
             case MotionEvent.ACTION_MOVE:
-                if (singlePoint) {
-                    pullDistance += (int) (y - preY) / ratio;
+                if (singlePoint && (enableHead || enableFoot)) {
+                    calculateDistance(y);
                     //正在显示头部
                     if (pullDistance > 0) {
-                        //非底部正在加载状态
-                        if (status != STATUS_PULLING_UP) {
-                            if (pullDistance >= pullDownEventHeight) {
-                                //头部被全部下拉出来
-                                Log.e(tag, "头部被全部下拉出来");
-                                changeStatus(STATUS_RELEASE_PULLING_DOWN);
-                            } else {
-                                //头部开始被拉出来
-                                Log.e(tag, "头部开始被拉出来");
-                                changeStatus(STATUS_START_PULL_DOWN);
+                        if (((Draggable) draggableView).canPullDown()) {
+                            //非底部正在加载状态
+                            if (status != STATUS_PULLING_UP) {
+                                if (pullDistance >= pullDownEventHeight) {
+                                    //头部被全部下拉出来
+                                    Log.e(tag, "头部被全部下拉出来" + ((Draggable) draggableView).canPullDown());
+                                    changeStatus(STATUS_RELEASE_PULLING_DOWN);
+                                } else {
+                                    //头部开始被拉出来
+                                    Log.e(tag, "头部开始被拉出来" + ((Draggable) draggableView).canPullDown());
+                                    changeStatus(STATUS_START_PULL_DOWN);
+                                }
+                                requestLayout();
+                                isDispatched = true;
+                                ev.setAction(MotionEvent.ACTION_CANCEL);
                             }
                         }
                     } else {
                         if (status != STATUS_PULLING_DOWN) {
-                            //正在显示底部,如果bottomView露出了一半就可以开始加载数据了
-                            if (pullDistance < -pullUpEventHeight / 2) {
-                                changeStatus(STATUS_PULLING_UP);
+                            if (pullDistance < 0 && ((Draggable) draggableView).isScrolledToBottom()) {
+                                //正在显示底部,如果bottomView露出了一半就可以开始加载数据了
+                                if (pullDistance < -pullUpEventHeight / 2) {
+                                    changeStatus(STATUS_PULLING_UP);
+                                } else {
+                                    changeStatus(STATUS_RELEASE_PULLING_UP);
+                                }
+                                requestLayout();
+                                isDispatched = true;
+                                ev.setAction(MotionEvent.ACTION_CANCEL);
                             }
+
                         }
                     }
                 }
-                preY = y;
+                if (!isDispatched) {
+                    pullDistance = 0;
+                }
                 singlePoint = true;
                 break;
             case MotionEvent.ACTION_UP:
             case MotionEvent.ACTION_CANCEL:
-                pullDistance += (int) (y - preY) / ratio;
+                calculateDistance(y);
                 if (pullDistance > 0) {
                     //下拉动作
                     if (status != STATUS_PULLING_UP) {
                         if (pullDistance >= pullDownEventHeight) {
                             //头部被全部下拉出来
-//                        Log.e(tag, "头部被全部下拉出来");
-                            changeStatus(STATUS_PULLING_DOWN);
+                            Log.e(tag, "头部被全部下拉出来" + ((Draggable) draggableView).canPullDown());
+                            if (((Draggable) draggableView).canPullDown()) {
+                                changeStatus(STATUS_PULLING_DOWN);
+                            }
                         } else if (pullDistance > 0) {
                             //头部开始被拉出来,松手时，将状态归置到STATUS_INIT
+                            Log.e(tag, "头部开始被拉出来" + ((Draggable) draggableView).canPullDown());
                             if (status != STATUS_PULLING_DOWN) {
-                                changeStatus(STATUS_INIT);
+                                if (((Draggable) draggableView).canPullDown()) {
+                                    changeStatus(STATUS_INIT);
+                                    restorePosition();
+                                }
                             }
                         }
                     }
@@ -220,34 +247,43 @@ public class PullLayout extends ViewGroup {
                     //上提动作
                     if (status != STATUS_PULLING_DOWN) {
                         //如果bottomView露出了一半就可以开始加载数据了
-                        if (pullDistance < -pullUpEventHeight / 2) {
+                        if (((Draggable) draggableView).isScrolledToBottom() && pullDistance < 0) {
                             changeStatus(STATUS_PULLING_UP);
+                            restorePosition();
                         }
                     }
                 }
-
-                preY = y;
                 /**
                  * 松开手指后，将View还原到该有的位置
                  */
-                restorePosition();
+//                restorePosition();
                 break;
 
             case MotionEvent.ACTION_POINTER_DOWN:
             case MotionEvent.ACTION_POINTER_UP:
                 preY = y;
                 singlePoint = false;
+                requestLayout();
                 break;
         }
 
-        // 根据下拉距离改变比例
-        ratio = (float) (2 + 2 * Math.tan(Math.PI / 2 / getMeasuredHeight() * (Math.abs(pullDistance))));
-        requestLayout();
+//        // 根据下拉距离改变比例
+//        ratio = (float) (2 + 2 * Math.tan(Math.PI / 2 / getMeasuredHeight() * (Math.abs(pullDistance))));
+        super.dispatchTouchEvent(ev);
         return true;
     }
 
+
     private void resetEvent() {
         removeCallbacks(restoreRunnable);
+    }
+
+    private void calculateDistance(float y) {
+        pullDistance += (int) (y - preY) / ratio;
+        preY = y;
+        Log.e(tag, "calculateDistance y=" + y + "---preY=" + preY + "--pullDistance=" + pullDistance);
+        // 根据下拉距离改变比例
+        ratio = (float) (2 + 2 * Math.tan(Math.PI / 2 / getMeasuredHeight() * (Math.abs(pullDistance))));
     }
 
     private void changeStatus(int status) {
@@ -284,6 +320,11 @@ public class PullLayout extends ViewGroup {
                     if (onPullListener != null) {
                         onPullListener.onPullUp();
                     }
+                    this.status = status;
+                    break;
+                case STATUS_RELEASE_PULLING_UP:
+                    bottomTView.setText("松开加载");
+                    headTView.setText("");
                     this.status = status;
                     break;
                 case STATUS_PULLED_DOWN_SUCCESS:

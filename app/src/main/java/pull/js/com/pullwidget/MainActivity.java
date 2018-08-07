@@ -22,9 +22,10 @@ public class MainActivity extends AppCompatActivity implements PullLayout.OnPull
         setContentView(R.layout.activity_main);
         pullLayout = findViewById(R.id.pullLayout);
         pullLayout.setOnPullListener(this);
+//        pullLayout.enable(false, false);
         listView = findViewById(R.id.listView);
         data = new ArrayList();
-        for (int i = 0; i < 25; i++) {
+        for (int i = 0; i < 13; i++) {
             data.add("Data" + i);
         }
         listView.setAdapter(new ArrayAdapter<String>(this, android.R.layout.simple_list_item_1, data));

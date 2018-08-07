@@ -24,11 +24,15 @@ public class PullListView extends ListView implements Draggable {
 
     @Override
     public boolean canPullDown() {
-        return false;
+        if (getFirstVisiblePosition() == 0 && getChildAt(0) != null && getChildAt(0).getTop() >= 0 || getCount() == 0) {
+            // 滑到ListView的顶部了
+            return true;
+        } else
+            return false;
     }
 
     @Override
     public boolean isScrolledToBottom() {
-        return false;
+        return getLastVisiblePosition() == getCount() - 1;
     }
 }

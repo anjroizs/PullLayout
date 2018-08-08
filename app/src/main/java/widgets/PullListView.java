@@ -35,4 +35,8 @@ public class PullListView extends ListView implements Draggable {
     public boolean isScrolledToBottom() {
         return getLastVisiblePosition() == getCount() - 1;
     }
+
+    public void emerge(int height) {
+        smoothScrollBy(height, 0);
+    }
 }

@@ -25,6 +25,7 @@ public class PullLayout extends ViewGroup {
      */
     public static final int SUCCESS = 1;
     public static final int FAILED = 2;
+    public static final int FAILED_SHOW = 3;
 
     /**
      * 头部组件
@@ -104,9 +105,13 @@ public class PullLayout extends ViewGroup {
      */
     private static final int STATUS_PULLED_UP_FAILED = 10;
     /**
+     * 完成加载，失败后是否显示失败原因
+     */
+    private static final int STATUS_PULLED_UP_FAILED_SHOW = 11;
+    /**
      * 业务操作完成
      */
-    private static final int STATUS_DONE = 11;
+    private static final int STATUS_DONE = 12;
     /**
      * 状态
      */
@@ -143,6 +148,8 @@ public class PullLayout extends ViewGroup {
                 status = STATUS_PULLED_DOWN_SUCCESS;
             } else if (result == FAILED) {
                 status = STATUS_PULLED_UP_FAILED;
+            } else if (result == FAILED_SHOW) {
+                status = STATUS_PULLED_UP_FAILED_SHOW;
             }
         } else if (this.status == STATUS_PULLING_UP) {
             status = STATUS_PULLED_UP_SUCCESS;
@@ -202,11 +209,11 @@ public class PullLayout extends ViewGroup {
                         if (status != STATUS_PULLING_DOWN) {
                             if (pullDistance < 0 && ((Draggable) draggableView).isScrolledToBottom()) {
                                 //正在显示底部,如果bottomView露出了一半就可以开始加载数据了
-                                if (pullDistance < -pullUpEventHeight / 2) {
-                                    changeStatus(STATUS_PULLING_UP);
-                                } else {
-                                    changeStatus(STATUS_RELEASE_PULLING_UP);
-                                }
+//                                if (pullDistance < -pullUpEventHeight / 2) {
+                                changeStatus(STATUS_PULLING_UP);
+//                                } else {
+//                                    changeStatus(STATUS_RELEASE_PULLING_UP);
+//                                }
                                 requestLayout();
                                 isDispatched = true;
                                 ev.setAction(MotionEvent.ACTION_CANCEL);
@@ -336,10 +343,15 @@ public class PullLayout extends ViewGroup {
                     this.status = status;
                     break;
                 case STATUS_PULLED_UP_SUCCESS:
-                    bottomTView.setText("加载完成成功");
+                    bottomTView.setText("");
+                    ((Draggable) draggableView).scrollBy(pullUpEventHeight);
                     this.status = status;
                 case STATUS_PULLED_UP_FAILED:
-                    bottomTView.setText("加载完成失败");
+                    bottomTView.setText("");
+                    this.status = status;
+                    break;
+                case STATUS_PULLED_UP_FAILED_SHOW:
+                    bottomTView.setText("加载完成失败SHOW");
                     this.status = status;
                     break;
             }
@@ -425,7 +437,6 @@ public class PullLayout extends ViewGroup {
                 case STATUS_INIT:
                 case STATUS_DONE:
                 case STATUS_PULLED_DOWN_SUCCESS:
-                case STATUS_PULLED_UP_SUCCESS:
                 case STATUS_PULLED_DOWN_FAILED:
                 case STATUS_PULLED_UP_FAILED:
                     if (pullDistance < 0) {
@@ -445,6 +456,16 @@ public class PullLayout extends ViewGroup {
                             postDelayed(restoreRunnable, 3);
                         }
                     }
+                    requestLayout();
+                    break;
+                case STATUS_PULLED_UP_SUCCESS:
+                    pullDistance = 0;
+                    removeCallbacks(restoreRunnable);
+                    requestLayout();
+                    break;
+                case STATUS_PULLED_UP_FAILED_SHOW:
+                    pullDistance = -pullUpEventHeight;
+                    removeCallbacks(restoreRunnable);
                     requestLayout();
                     break;
             }

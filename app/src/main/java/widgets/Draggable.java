@@ -19,4 +19,12 @@ public interface Draggable {
      * @return
      */
     boolean isScrolledToBottom();
+
+    /**
+     * 上拉时，加载出来数据后，将DraggableView新的内容显露出一部分
+     *
+     * @param height 显露的高度
+     * @return
+     */
+    void emerge(int height);
 }

@@ -6,6 +6,8 @@ package widgets;
  * @date 2018/8/1 0001
  */
 public interface Draggable {
+    void init(PullLayout pullLayout);
+
     /**
      * 是否可以下拉
      *
@@ -20,6 +22,7 @@ public interface Draggable {
      */
     boolean isScrolledToBottom();
 
+
     /**
      * 上拉时，加载出来数据后，将DraggableView新的内容显露出一部分
      *
@@ -27,4 +30,9 @@ public interface Draggable {
      * @return
      */
     void emerge(int height);
+
+    /**
+     * 滑翔到底部时去加载
+     */
+    void enableFlingToLoadUp(boolean flingToLoadUp);
 }

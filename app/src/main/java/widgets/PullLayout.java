@@ -10,8 +10,6 @@ import android.view.View;
 import android.view.ViewGroup;
 import android.widget.TextView;
 
-import pull.js.com.pullwidget.R;
-
 /**
  * @author JongSung
  * @Description 一个实现下拉刷新，上拉加载的布局文件；
@@ -31,12 +29,11 @@ public class PullLayout extends ViewGroup {
      * 头部组件
      */
     private View headView;
-    private TextView headTView;
     /**
      * 底部组件
      */
-    private View bottomView;
-    private TextView bottomTView;
+    private View footView;
+    private TextView footTView;
     /**
      * 中间拖拽组件,必须实现{@link Draggable}接口
      */
@@ -63,59 +60,10 @@ public class PullLayout extends ViewGroup {
      * 手势的下拉距离同实际layout距离比例。
      */
     private float ratio = 1;
-    private static final int STATUS_UNKNOWN = 0;
-    /**
-     * 初始状态（头部和底部都隐藏)
-     */
-    private static final int STATUS_INIT = 1;
-    /**
-     * 继续下拉（头部开始下拉出来）
-     */
-    private static final int STATUS_START_PULL_DOWN = 2;
-    /**
-     * 松开即可刷新（头部全部下拉出来）
-     */
-    private static final int STATUS_RELEASE_PULLING_DOWN = 3;
-    /**
-     * 正在刷新
-     */
-    private static final int STATUS_PULLING_DOWN = 4;
-    /**
-     * 完成刷新
-     */
-    private static final int STATUS_PULLED_DOWN_SUCCESS = 5;
-    /**
-     * 完成刷新
-     */
-    private static final int STATUS_PULLED_DOWN_FAILED = 6;
-    /**
-     * 松开即可加载
-     */
-    private static final int STATUS_RELEASE_PULLING_UP = 7;
-    /**
-     * 正在加载（底部全部显示）
-     */
-    private static final int STATUS_PULLING_UP = 8;
-    /**
-     * 完成加载
-     */
-    private static final int STATUS_PULLED_UP_SUCCESS = 9;
-    /**
-     * 完成加载
-     */
-    private static final int STATUS_PULLED_UP_FAILED = 10;
-    /**
-     * 完成加载，失败后是否显示失败原因
-     */
-    private static final int STATUS_PULLED_UP_FAILED_SHOW = 11;
-    /**
-     * 业务操作完成
-     */
-    private static final int STATUS_DONE = 12;
     /**
      * 状态
      */
-    private int status = STATUS_UNKNOWN;
+    private int status = PullLayoutImp.STATUS_UNKNOWN;
 
     public PullLayout(Context context) {
         super(context);
@@ -139,24 +87,29 @@ public class PullLayout extends ViewGroup {
     }
 
     private void init(Context context) {
+
+    }
+
+    public void enableFlingToLoadUp(boolean enableFlingToLoadUp) {
+        ((Draggable) draggableView).enableFlingToLoadUp(enableFlingToLoadUp);
     }
 
     public final void finished(int result) {
-        int status = STATUS_INIT;
-        if (this.status == STATUS_PULLING_DOWN) {
+        int status = PullLayoutImp.STATUS_INIT;
+        if (this.status == PullLayoutImp.STATUS_PULLING_DOWN) {
             if (result == SUCCESS) {
-                status = STATUS_PULLED_DOWN_SUCCESS;
+                status = PullLayoutImp.STATUS_PULLED_DOWN_SUCCESS;
             } else if (result == FAILED) {
-                status = STATUS_PULLED_UP_FAILED;
+                status = PullLayoutImp.STATUS_PULLED_UP_FAILED;
             } else if (result == FAILED_SHOW) {
-                status = STATUS_PULLED_UP_FAILED_SHOW;
+                status = PullLayoutImp.STATUS_PULLED_UP_FAILED_SHOW;
             }
-        } else if (this.status == STATUS_PULLING_UP) {
-            status = STATUS_PULLED_UP_SUCCESS;
+        } else if (this.status == PullLayoutImp.STATUS_PULLING_UP) {
+            status = PullLayoutImp.STATUS_PULLED_UP_SUCCESS;
             if (result == SUCCESS) {
-                status = STATUS_PULLED_UP_SUCCESS;
+                status = PullLayoutImp.STATUS_PULLED_UP_SUCCESS;
             } else if (result == FAILED) {
-                status = STATUS_PULLED_UP_FAILED;
+                status = PullLayoutImp.STATUS_PULLED_UP_FAILED;
             }
         }
         changeStatus(status);
@@ -190,15 +143,15 @@ public class PullLayout extends ViewGroup {
                     if (pullDistance > 0) {
                         if (((Draggable) draggableView).canPullDown()) {
                             //非底部正在加载状态
-                            if (status != STATUS_PULLING_UP) {
+                            if (status != PullLayoutImp.STATUS_PULLING_UP) {
                                 if (pullDistance >= pullDownEventHeight) {
                                     //头部被全部下拉出来
                                     Log.e(tag, "头部被全部下拉出来" + ((Draggable) draggableView).canPullDown());
-                                    changeStatus(STATUS_RELEASE_PULLING_DOWN);
+                                    changeStatus(PullLayoutImp.STATUS_RELEASE_PULLING_DOWN);
                                 } else {
                                     //头部开始被拉出来
                                     Log.e(tag, "头部开始被拉出来" + ((Draggable) draggableView).canPullDown());
-                                    changeStatus(STATUS_START_PULL_DOWN);
+                                    changeStatus(PullLayoutImp.STATUS_START_PULL_DOWN);
                                 }
                                 requestLayout();
                                 isDispatched = true;
@@ -206,13 +159,13 @@ public class PullLayout extends ViewGroup {
                             }
                         }
                     } else {
-                        if (status != STATUS_PULLING_DOWN) {
+                        if (status != PullLayoutImp.STATUS_PULLING_DOWN) {
                             if (pullDistance < 0 && ((Draggable) draggableView).isScrolledToBottom()) {
-                                //正在显示底部,如果bottomView露出了一半就可以开始加载数据了
+                                //正在显示底部,如果footView露出了一半就可以开始加载数据了
 //                                if (pullDistance < -pullUpEventHeight / 2) {
-                                changeStatus(STATUS_PULLING_UP);
+                                changeStatus(PullLayoutImp.STATUS_PULLING_UP);
 //                                } else {
-//                                    changeStatus(STATUS_RELEASE_PULLING_UP);
+//                                    changeStatus(PullLayoutImp.STATUS_RELEASE_PULLING_UP);
 //                                }
                                 requestLayout();
                                 isDispatched = true;
@@ -232,19 +185,20 @@ public class PullLayout extends ViewGroup {
                 calculateDistance(y);
                 if (pullDistance > 0) {
                     //下拉动作
-                    if (status != STATUS_PULLING_UP) {
+                    if (status != PullLayoutImp.STATUS_PULLING_UP) {
                         if (pullDistance >= pullDownEventHeight) {
                             //头部被全部下拉出来
                             Log.e(tag, "头部被全部下拉出来" + ((Draggable) draggableView).canPullDown());
                             if (((Draggable) draggableView).canPullDown()) {
-                                changeStatus(STATUS_PULLING_DOWN);
+                                changeStatus(PullLayoutImp.STATUS_PULLING_DOWN);
+                                restorePosition();
                             }
                         } else if (pullDistance > 0) {
-                            //头部开始被拉出来,松手时，将状态归置到STATUS_INIT
+                            //头部开始被拉出来,松手时，将状态归置到PullLayoutImp.STATUS_INIT
                             Log.e(tag, "头部开始被拉出来" + ((Draggable) draggableView).canPullDown());
-                            if (status != STATUS_PULLING_DOWN) {
+                            if (status != PullLayoutImp.STATUS_PULLING_DOWN) {
                                 if (((Draggable) draggableView).canPullDown()) {
-                                    changeStatus(STATUS_INIT);
+                                    changeStatus(PullLayoutImp.STATUS_INIT);
                                     restorePosition();
                                 }
                             }
@@ -252,10 +206,9 @@ public class PullLayout extends ViewGroup {
                     }
                 } else {
                     //上提动作
-                    if (status != STATUS_PULLING_DOWN) {
-                        //如果bottomView露出了一半就可以开始加载数据了
+                    if (status != PullLayoutImp.STATUS_PULLING_DOWN) {
                         if (((Draggable) draggableView).isScrolledToBottom() && pullDistance < 0) {
-                            changeStatus(STATUS_PULLING_UP);
+                            changeStatus(PullLayoutImp.STATUS_PULLING_UP);
                             restorePosition();
                         }
                     }
@@ -296,65 +249,67 @@ public class PullLayout extends ViewGroup {
     private void changeStatus(int status) {
         if (this.status != status) {
             switch (status) {
-                case STATUS_INIT:
-                    headTView.setText("");
-                    bottomTView.setText("");
+                case PullLayoutImp.STATUS_INIT:
+                    ((HeadImp) headView).reset();
+                    ((FootImp) footView).reset();
                     this.status = status;
                     break;
-                case STATUS_START_PULL_DOWN:
-                    if (this.status != STATUS_PULLING_DOWN) {
-                        headTView.setText("继续下拉刷新");
+                case PullLayoutImp.STATUS_START_PULL_DOWN:
+                    if (this.status != PullLayoutImp.STATUS_PULLING_DOWN) {
+                        ((HeadImp) headView).startPullDown();
                         this.status = status;
                     }
                     break;
-                case STATUS_RELEASE_PULLING_DOWN:
-                    if (this.status != STATUS_PULLING_DOWN) {
-                        headTView.setText("松开即可刷新");
+                case PullLayoutImp.STATUS_RELEASE_PULLING_DOWN:
+                    if (this.status != PullLayoutImp.STATUS_PULLING_DOWN) {
+                        ((HeadImp) headView).releaseToLoad();
                         this.status = status;
                     }
                     break;
-                case STATUS_PULLING_DOWN:
-                    headTView.setText("正在刷新");
-                    bottomTView.setText("");
+                case PullLayoutImp.STATUS_PULLING_DOWN:
+                    ((HeadImp) headView).loading();
+                    ((FootImp) footView).reset();
                     if (onPullListener != null) {
                         onPullListener.onPullDown();
                     }
                     this.status = status;
                     break;
-                case STATUS_PULLING_UP:
-                    bottomTView.setText("正在加载");
-                    headTView.setText("");
+                case PullLayoutImp.STATUS_PULLING_UP:
+                    ((FootImp) footView).loading();
+                    ((HeadImp) headView).reset();
                     if (onPullListener != null) {
                         onPullListener.onPullUp();
                     }
                     this.status = status;
                     break;
-                case STATUS_RELEASE_PULLING_UP:
-                    bottomTView.setText("松开加载");
-                    headTView.setText("");
+                case PullLayoutImp.STATUS_RELEASE_PULLING_UP:
+                    ((FootImp) footView).releaseToLoad();
+                    ((HeadImp) headView).reset();
                     this.status = status;
                     break;
-                case STATUS_PULLED_DOWN_SUCCESS:
-                    headTView.setText("刷新完成成功");
+                case PullLayoutImp.STATUS_PULLED_DOWN_SUCCESS:
+                    ((HeadImp) headView).loadSuccess();
                     this.status = status;
                     break;
-                case STATUS_PULLED_DOWN_FAILED:
-                    headTView.setText("刷新完成失败");
+                case PullLayoutImp.STATUS_PULLED_DOWN_FAILED:
+                    ((HeadImp) headView).loadFailed();
                     this.status = status;
                     break;
-                case STATUS_PULLED_UP_SUCCESS:
-                    bottomTView.setText("");
-                    ((Draggable) draggableView).scrollBy(pullUpEventHeight);
+                case PullLayoutImp.STATUS_PULLED_UP_SUCCESS:
+                    ((FootImp) footView).loadSuccess();
+                    ((Draggable) draggableView).emerge(pullUpEventHeight);
                     this.status = status;
-                case STATUS_PULLED_UP_FAILED:
-                    bottomTView.setText("");
+                case PullLayoutImp.STATUS_PULLED_UP_FAILED:
+                    ((FootImp) footView).loadFailed();
                     this.status = status;
                     break;
-                case STATUS_PULLED_UP_FAILED_SHOW:
-                    bottomTView.setText("加载完成失败SHOW");
+                case PullLayoutImp.STATUS_PULLED_UP_FAILED_SHOW:
+                    ((FootImp) footView).loadFailedShow();
                     this.status = status;
                     break;
             }
+            ((PullLayoutImp) headView).changeStatus(status);
+            ((PullLayoutImp) footView).changeStatus(status);
         }
     }
 
@@ -367,7 +322,7 @@ public class PullLayout extends ViewGroup {
 //            Log.e(tag, "Speed=" + MOVE_SPEED);
             switch (status) {
                 //正在刷新时还原
-                case STATUS_PULLING_DOWN: {
+                case PullLayoutImp.STATUS_PULLING_DOWN: {
                     if (pullDistance < 0) {
                         pullDistance += MOVE_SPEED;
                         if (pullDistance > pullUpEventHeight) {
@@ -399,10 +354,10 @@ public class PullLayout extends ViewGroup {
                     requestLayout();
                 }
                 break;
-                case STATUS_PULLING_UP: {
+                case PullLayoutImp.STATUS_PULLING_UP: {
                     //整体View处在上拉状态中
                     if (pullDistance < 0) {
-                        //上拉距离大于bottomView显示的高度
+                        //上拉距离大于footView显示的高度
                         if (pullDistance < -pullUpEventHeight) {
                             pullDistance += MOVE_SPEED;
                             if (pullDistance > -pullUpEventHeight) {
@@ -422,7 +377,7 @@ public class PullLayout extends ViewGroup {
                         }
                     } else if (pullDistance > 0) {
                         //整体View处在下拉状态中
-                        //下拉距离大于bottomView的显示高度,也就是bottomView一部分隐藏在底部屏幕以下
+                        //下拉距离大于footView的显示高度,也就是footView一部分隐藏在底部屏幕以下
                         pullDistance -= MOVE_SPEED;
                         if (pullDistance < -pullUpEventHeight) {
                             pullDistance = -pullUpEventHeight;
@@ -434,11 +389,11 @@ public class PullLayout extends ViewGroup {
                     requestLayout();
                 }
                 break;
-                case STATUS_INIT:
-                case STATUS_DONE:
-                case STATUS_PULLED_DOWN_SUCCESS:
-                case STATUS_PULLED_DOWN_FAILED:
-                case STATUS_PULLED_UP_FAILED:
+                case PullLayoutImp.STATUS_INIT:
+                case PullLayoutImp.STATUS_DONE:
+                case PullLayoutImp.STATUS_PULLED_DOWN_SUCCESS:
+                case PullLayoutImp.STATUS_PULLED_DOWN_FAILED:
+                case PullLayoutImp.STATUS_PULLED_UP_FAILED:
                     if (pullDistance < 0) {
                         pullDistance += MOVE_SPEED;
                         if (pullDistance > 0) {
@@ -458,12 +413,12 @@ public class PullLayout extends ViewGroup {
                     }
                     requestLayout();
                     break;
-                case STATUS_PULLED_UP_SUCCESS:
+                case PullLayoutImp.STATUS_PULLED_UP_SUCCESS:
                     pullDistance = 0;
                     removeCallbacks(restoreRunnable);
                     requestLayout();
                     break;
-                case STATUS_PULLED_UP_FAILED_SHOW:
+                case PullLayoutImp.STATUS_PULLED_UP_FAILED_SHOW:
                     pullDistance = -pullUpEventHeight;
                     removeCallbacks(restoreRunnable);
                     requestLayout();
@@ -495,20 +450,23 @@ public class PullLayout extends ViewGroup {
     protected void onLayout(boolean changed, int l, int t, int r, int b) {
         if (isFirstLayout) {
             if (getChildCount() != 3) {
-                throw new RuntimeException("The PullLayout must have 3 children witch include headChild,draggableChild and bottomChild.");
+                throw new RuntimeException("The PullLayout must have 3 children witch include headChild,draggableChild and footChild.");
             }
             headView = getChildAt(0);
+            if (!(headView instanceof HeadImp)) {
+                throw new RuntimeException("The HeadChild must implement the interface named HeadImp");
+            }
             draggableView = getChildAt(1);
             if (!(draggableView instanceof Draggable)) {
                 throw new RuntimeException("The draggableChild must implement the interface named Draggable.");
             }
-            bottomView = getChildAt(2);
-            headTView = headView.findViewById(R.id.headTView);
-            bottomTView = bottomView.findViewById(R.id.bottomTView);
+            footView = getChildAt(2);
+            ((Draggable) draggableView).init(this);
             pullDownEventHeight = headView.getMeasuredHeight();
-            pullUpEventHeight = bottomView.getMeasuredHeight();
+            pullUpEventHeight = footView.getMeasuredHeight();
             isFirstLayout = false;
-            changeStatus(STATUS_INIT);
+            changeStatus(PullLayoutImp.STATUS_INIT);
+            enableFlingToLoadUp(true);
         }
         final int paddingL = getPaddingLeft();
         final int paddingT = getPaddingTop();
@@ -524,8 +482,20 @@ public class PullLayout extends ViewGroup {
         draggableView.layout(paddingL, top, draggableView.getMeasuredWidth() - paddingR, bottom);
 
         top = bottom;
-        bottom = top + bottomView.getMeasuredHeight();
-        bottomView.layout(paddingL, top, bottomView.getMeasuredWidth() - paddingR, bottom);
+        bottom = top + footView.getMeasuredHeight();
+        footView.layout(paddingL, top, footView.getMeasuredWidth() - paddingR, bottom);
+    }
+
+    public final void loadWhenFlingToBottom() {
+        if (status != PullLayoutImp.STATUS_PULLING_DOWN
+                || status != PullLayoutImp.STATUS_PULLING_UP) {
+            resetEvent();
+            changeStatus(PullLayoutImp.STATUS_PULLING_UP);
+            if (pullDistance == 0) {
+                pullDistance = -1;
+            }
+            restorePosition();
+        }
     }
 
     /**
